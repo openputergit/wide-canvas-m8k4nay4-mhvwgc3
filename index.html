@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CalorieSense AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <style>
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+        .loader {
+            border-top-color: #3498db;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg w-96">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="authTitle" class="text-2xl font-bold dark:text-white">Sign In</h2>
+                <button onclick="toggleAuthModal()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form id="authForm" onsubmit="handleAuth(event)">
+                <div class="mb-4">
+                    <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white">
+                </div>
+                <div class="mb-6">
+                    <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white">
+                </div>
+                <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Submit</button>
+                <p class="mt-4 text-center dark:text-white">
+                    <span id="authSwitch"></span>
+                    <a href="#" onclick="toggleAuthMode()" class="text-blue-500 hover:underline"></a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">CalorieSense AI</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <i class="bi bi-moon-stars dark:hidden"></i>
+                        <i class="bi bi-sun hidden dark:block text-white"></i>
+                    </button>
+                    <button id="authButton" onclick="toggleAuthModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Sign In
+                    </button>
+                    <button id="logoutButton" onclick="handleLogout()" class="hidden bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Upload Section -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 dark:text-white">Upload Food Image</h2>
+                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                    <input type="file" id="fileInput" accept=".png,.jpg,.jpeg" class="hidden" onchange="handleFileSelect(event)">
+                    <label for="fileInput" class="cursor-pointer">
+                        <div class="space-y-4">
+                            <i class="bi bi-cloud-upload text-4xl text-blue-500"></i>
+                            <p class="text-gray-600 dark:text-gray-300">Click to upload or drag and drop</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">PNG, JPG or JPEG (MAX. 10MB)</p>
+                        </div>
+                    </label>
+                </div>
+                <div id="preview" class="mt-4 hidden">
+                    <img id="imagePreview" class="max-w-full h-auto rounded-lg" alt="Preview">
+                    <button onclick="analyzeImage()" class="mt-4 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+                        Analyze Image
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 dark:text-white">Results</h2>
+                <div id="loader" class="hidden">
+                    <div class="loader h-12 w-12 rounded-full border-4 border-gray-200 mx-auto"></div>
+                    <p class="text-center mt-4 dark:text-white">Analyzing image...</p>
+                </div>
+                <div id="results" class="hidden space-y-4">
+                    <div class="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <h3 class="font-semibold dark:text-white">Food Item</h3>
+                        <p id="foodName" class="text-gray-700 dark:text-gray-300"></p>
+                    </div>
+                    <div class="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <h3 class="font-semibold dark:text-white">Calories</h3>
+                        <p id="calories" class="text-gray-700 dark:text-gray-300"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div id="historySection" class="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg hidden">
+            <h2 class="text-xl font-semibold mb-4 dark:text-white">Search History</h2>
+            <div id="historyList" class="space-y-4"></div>
+        </div>
+    </main>
+
+    <script>
+        // Theme Toggle
+        const theme = localStorage.getItem('theme') || 'light';
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+
+        // Auth State
+        let isLoggedIn = false;
+        let isSignIn = true;
+        let currentUser = null;
+
+        function toggleAuthModal() {
+            const modal = document.getElementById('authModal');
+            modal.classList.toggle('hidden');
+            updateAuthUI();
+        }
+
+        function toggleAuthMode() {
+            isSignIn = !isSignIn;
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            const title = document.getElementById('authTitle');
+            const switchText = document.getElementById('authSwitch');
+            const switchLink = document.getElementById('authSwitch').nextElementSibling;
+            
+            title.textContent = isSignIn ? 'Sign In' : 'Sign Up';
+            switchText.textContent = isSignIn ? "Don't have an account? " : "Already have an account? ";
+            switchLink.textContent = isSignIn ? 'Sign Up' : 'Sign In';
+        }
+
+        async function handleAuth(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                // Simulate auth
+                currentUser = { email };
+                isLoggedIn = true;
+                document.getElementById('authButton').classList.add('hidden');
+                document.getElementById('logoutButton').classList.remove('hidden');
+                document.getElementById('historySection').classList.remove('hidden');
+                toggleAuthModal();
+            } catch (error) {
+                console.error('Auth error:', error);
+            }
+        }
+
+        function handleLogout() {
+            isLoggedIn = false;
+            currentUser = null;
+            document.getElementById('authButton').classList.remove('hidden');
+            document.getElementById('logoutButton').classList.add('hidden');
+            document.getElementById('historySection').classList.add('hidden');
+        }
+
+        // Image handling
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('imagePreview').src = e.target.result;
+                    document.getElementById('preview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function analyzeImage() {
+            const loader = document.getElementById('loader');
+            const results = document.getElementById('results');
+            
+            loader.classList.remove('hidden');
+            results.classList.add('hidden');
+
+            try {
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Simulate results
+                const foodName = "Grilled Chicken Salad";
+                const calories = "350 kcal";
+
+                document.getElementById('foodName').textContent = foodName;
+                document.getElementById('calories').textContent = calories;
+
+                if (isLoggedIn) {
+                    addToHistory(foodName, calories);
+                }
+
+                loader.classList.add('hidden');
+                results.classList.remove('hidden');
+            } catch (error) {
+                console.error('Analysis error:', error);
+            }
+        }
+
+        function addToHistory(food, calories) {
+            const historyList = document.getElementById('historyList');
+            const historyItem = document.createElement('div');
+            historyItem.className = 'p-4 bg-gray-100 dark:bg-gray-700 rounded-lg flex justify-between items-center';
+            historyItem.innerHTML = `
+                <div>
+                    <h3 class="font-semibold dark:text-white">${food}</h3>
+                    <p class="text-gray-700 dark:text-gray-300">${calories}</p>
+                </div>
+                <span class="text-sm text-gray-500 dark:text-gray-400">${new Date().toLocaleDateString()}</span>
+            `;
+            historyList.prepend(historyItem);
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
